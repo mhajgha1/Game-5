@@ -1,0 +1,129 @@
+const functions = [
+    {f: x => Math.sin(x), df: x => Math.cos(x), name: 'sin(x)'},
+    {f: x => x**2, df: x => 2*x, name: 'x^2'},
+    {f: x => Math.exp(x), df: x => Math.exp(x), name: 'e^x'},
+    {f: x => Math.log(Math.abs(x)), df: x => 1/x, name: 'ln(|x|)'},
+    {f: x => x**3, df: x => 3*x**2, name: 'x^3'}
+];
+
+let currentFunction, currentX, correctAnswer, userSlope;
+
+function generateGraph(func, x) {
+    const xValues = Array.from({length: 100}, (_, i) => i / 10 - 5);
+    const yValues = xValues.map(func);
+
+    const data = [{
+        x: xValues,
+        y: yValues,
+        type: 'scatter',
+        mode: 'lines',
+        line: {color: '#FF6B6B', width: 3}
+    }, {
+        x: [x],
+        y: [func(x)],
+        type: 'scatter',
+        mode: 'markers',
+        marker: {size: 10, color: '#4ECDC4'}
+    }];
+
+    const layout = {
+        title: 'Drag the blue line endpoints to adjust the tangent line',
+        height: 400,
+        width: 600,
+        margin: {l: 40, r: 40, b: 40, t: 40},
+        showlegend: false,
+        plot_bgcolor: "#f8f8f8",
+        paper_bgcolor: "rgba(0,0,0,0)",
+        shapes: [{
+            type: 'line',
+            x0: x - 1,
+            y0: func(x) - 1,
+            x1: x + 1,
+            y1: func(x) + 1,
+            line: {
+                color: 'rgb(55, 128, 191)',
+                width: 3,
+            },
+            editable: true
+        }],
+        dragmode: 'none'
+    };
+
+    Plotly.newPlot('graph', data, layout, {editable: true});
+
+    let gd = document.getElementById('graph');
+    gd.on('plotly_relayout', function(eventdata) {
+        if (eventdata['shapes[0].x0'] !== undefined) {
+            const x0 = eventdata['shapes[0].x0'];
+            const y0 = eventdata['shapes[0].y0'];
+            const x1 = eventdata['shapes[0].x1'];
+            const y1 = eventdata['shapes[0].y1'];
+            userSlope = (y1 - y0) / (x1 - x0);
+            document.getElementById('slope').textContent = `Your estimated slope: ${userSlope.toFixed(2)}`;
+        }
+    });
+}
+
+function generateOptions() {
+    const options = document.getElementById('options');
+    options.innerHTML = '';
+
+    let wrongAnswer1, wrongAnswer2;
+    
+    if (Math.abs(correctAnswer) < 1) {
+        wrongAnswer1 = correctAnswer + 2;
+        wrongAnswer2 = correctAnswer - 2;
+    } else {
+        wrongAnswer1 = correctAnswer * 2;
+        wrongAnswer2 = correctAnswer / 2;
+    }
+
+    const answers = [correctAnswer, wrongAnswer1, wrongAnswer2]
+        .map(a => Math.round(a * 10) / 10)
+        .sort(() => Math.random() - 0.5);
+
+    answers.forEach(answer => {
+        const button = document.createElement('button');
+        button.textContent = answer;
+        button.onclick = () => checkAnswer(answer);
+        options.appendChild(button);
+    });
+}
+
+function checkAnswer(selectedAnswer) {
+    const resultDiv = document.getElementById('result');
+    if (Math.abs(selectedAnswer - correctAnswer) < 0.1) {
+        resultDiv.textContent = 'Correct!';
+        resultDiv.style.backgroundColor = '#4CAF50';
+        resultDiv.style.color = 'white';
+    } else {
+        resultDiv.textContent = `Incorrect. The correct answer is approximately ${correctAnswer.toFixed(1)}`;
+        resultDiv.style.backgroundColor = '#F44336';
+        resultDiv.style.color = 'white';
+    }
+}
+
+function newGame() {
+    currentFunction = functions[Math.floor(Math.random() * functions.length)];
+    currentX = Math.random() * 6 - 3;
+    correctAnswer = currentFunction.df(currentX);
+
+    generateGraph(currentFunction.f, currentX);
+    generateOptions();
+
+    document.getElementById('result').textContent = '';
+    document.getElementById('result').style.backgroundColor = 'transparent';
+    document.getElementById('slope').textContent = '';
+}
+
+function showInstructions() {
+    alert("How to Play:\n\n" +
+          "1. Look at the graph and the highlighted point.\n" +
+          "2. Drag the endpoints of the blue line to position it as a tangent line at the highlighted point.\n" +
+          "3. The slope of your line will be displayed below the graph.\n" +
+          "4. Choose the option that best matches your estimated slope.\n\n" +
+          "Remember: The derivative at a point is equal to the slope of the tangent line at that point.");
+}
+
+// Start the game when the page loads
+window.onload = newGame;
